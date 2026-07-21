@@ -130,3 +130,200 @@ palabras_interesantes = [
 
 filtro = df[df["Original"].str.lower().isin(palabras_interesantes)]
 
+# 4. REPRESENTACIÓN VECTORIAL
+
+from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
+
+# Crear un corpus: cada elemento será una oración limpia y lematizada
+corpus_lematizado = []
+
+for oracion in doc.sents:
+    lemas_oracion = [
+        token.lemma_.lower()
+        for token in oracion
+        if not token.is_punct
+        and not token.is_space
+        and not token.is_stop
+    ]
+
+    if lemas_oracion:
+        corpus_lematizado.append(" ".join(lemas_oracion))
+
+print(
+    f"\nTotal de oraciones procesadas: "
+    f"{len(corpus_lematizado)}"
+)
+
+# A. BAG OF WORDS
+bow_vectorizer = CountVectorizer()
+
+# Entrenar el vectorizador y transformar el corpus
+X_bow = bow_vectorizer.fit_transform(corpus_lematizado)
+
+print("\n--- 4. Representación Bag of Words ---")
+print(f"Dimensiones de la matriz: {X_bow.shape}")
+print(f"Cantidad de palabras únicas: {len(bow_vectorizer.vocabulary_)}")
+
+# Mostrar algunas palabras del vocabulario
+vocabulario_bow = bow_vectorizer.get_feature_names_out()
+print(f"Primeras palabras del vocabulario: {vocabulario_bow[:20]}")
+
+# Mostrar el vector de la primera oración
+print("\nPrimera oración lematizada:")
+print(corpus_lematizado[0])
+
+print("\nVector numérico de la primera oración:")
+print(X_bow[0].toarray())
+
+
+corpus_lematizado = []
+
+for oracion in doc.sents:
+    lemas_oracion = [
+        token.lemma_.lower()
+        for token in oracion
+        if not token.is_punct
+        and not token.is_space
+        and not token.is_stop
+    ]
+
+    if lemas_oracion:
+        corpus_lematizado.append(" ".join(lemas_oracion))
+
+print(f"Total de oraciones procesadas: {len(corpus_lematizado)}")
+
+
+# 5. GRÁFICAS 3D DE BAG OF WORDS Y TF-IDF
+
+import matplotlib.pyplot as plt
+from sklearn.feature_extraction.text import (
+    CountVectorizer,
+    TfidfVectorizer,
+)
+from sklearn.decomposition import PCA
+
+
+def graficar_palabras_3d(
+    ax,
+    matriz,
+    vocabulario,
+    titulo,
+    color_puntos,
+):
+    # Transponer para que las filas representen palabras
+    matriz_palabras = matriz.T
+
+    # Reducir los datos a tres dimensiones mediante PCA
+    pca = PCA(n_components=3)
+    coords = pca.fit_transform(matriz_palabras.toarray())
+
+    # Extraer las coordenadas
+    x = coords[:, 0]
+    y = coords[:, 1]
+    z = coords[:, 2]
+
+    # Crear los puntos
+    ax.scatter(
+        x,
+        y,
+        z,
+        c=color_puntos,
+        s=80,
+        edgecolors="k",
+        alpha=0.8,
+        depthshade=True,
+    )
+
+    # Colocar el nombre de cada palabra
+    for i, palabra in enumerate(vocabulario):
+        ax.text(
+            x[i],
+            y[i],
+            z[i] + 0.1,
+            palabra,
+            fontsize=9,
+        )
+
+    ax.set_title(titulo)
+    ax.set_xlabel("Comp. Principal 1")
+    ax.set_ylabel("Comp. Principal 2")
+    ax.set_zlabel("Comp. Principal 3")
+
+    # Líneas de referencia
+    ax.plot(
+        [0, 0],
+        [0, 0],
+        [z.min(), z.max()],
+        c="grey",
+        ls="--",
+        lw=0.5,
+        alpha=0.3,
+    )
+
+    ax.plot(
+        [x.min(), x.max()],
+        [0, 0],
+        [0, 0],
+        c="grey",
+        ls="--",
+        lw=0.5,
+        alpha=0.3,
+    )
+
+    ax.plot(
+        [0, 0],
+        [y.min(), y.max()],
+        [0, 0],
+        c="grey",
+        ls="--",
+        lw=0.5,
+        alpha=0.3,
+    )
+
+
+# Crear la figura con las dos gráficas
+fig = plt.figure(figsize=(18, 8))
+
+# A. Bag of Words
+ax1 = fig.add_subplot(121, projection="3d")
+
+bow_vectorizer = CountVectorizer()
+X_bow = bow_vectorizer.fit_transform(corpus_lematizado)
+vocab_bow = bow_vectorizer.get_feature_names_out()
+
+graficar_palabras_3d(
+    ax1,
+    X_bow,
+    vocab_bow,
+    "Espacio BoW 3D (Conteos)",
+    "orange",
+)
+
+# B. TF-IDF
+ax2 = fig.add_subplot(122, projection="3d")
+
+tfidf_vectorizer = TfidfVectorizer()
+X_tfidf = tfidf_vectorizer.fit_transform(
+    corpus_lematizado
+)
+vocab_tfidf = tfidf_vectorizer.get_feature_names_out()
+
+graficar_palabras_3d(
+    ax2,
+    X_tfidf,
+    vocab_tfidf,
+    "Espacio TF-IDF 3D (Importancia)",
+    "teal",
+)
+
+plt.tight_layout()
+
+# Guardar la gráfica como evidencia
+plt.savefig(
+    "comparacion_bow_tfidf_3d.png",
+    dpi=300,
+    bbox_inches="tight",
+)
+
+# Mostrar la gráfica
+plt.show()
